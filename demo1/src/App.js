@@ -39,6 +39,8 @@ class App extends Component {
   
   render() {
     const {searchTerm, list} = this.state;
+
+    if (!result) { return null; }
     return (
       <div className="App">
             <Search value={searchTerm}
