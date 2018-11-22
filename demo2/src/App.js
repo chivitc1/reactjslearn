@@ -16,19 +16,6 @@ const url = `${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${DEFAULT_QUERY}`
 
 console.log(url)
 
-// const userList = ['Robin', 'Andrew', 'Dan']; const additionalUser = 'Jordan';
-// const allUsers = [ ...userList, additionalUser ];
-// const oldUsers = ['Robin', 'Andrew'];
-// const newUsers = ['Dan', 'Jordan'];
-// const allUsers = [ ...oldUsers, ...newUsers ];
-// console.log(allUsers);
-// const userNames = { firstname: 'Robin', lastname: 'Wieruch' }; const age = 28;
-// const user = { ...userNames, age };
-// console.log(user);
-// const userNames = { firstname: 'Robin', lastname: 'Wieruch' }; const userAge = { age: 28 };
-// const user = { ...userNames, ...userAge };
-// console.log(user);
-
 const Search = ({
   value,
   onChange,
@@ -74,7 +61,8 @@ class App extends Component {
     super(props)
 
     this.state = {
-      result: null,
+      results: null,
+      searchKey: '',
       searchTerm: DEFAULT_QUERY,
     }
 
@@ -83,6 +71,11 @@ class App extends Component {
     this.onDismiss = this.onDismiss.bind(this);
     this.onSearchSubmit = this.onSearchSubmit.bind(this);
     this.fetchSearchTopStories = this.fetchSearchTopStories.bind(this);
+    this.needsToSearchTopStories = this.needsToSearchTopStories.bind(this);
+  }
+
+  needsToSearchTopStories(searchTerm) {
+    return !this.state.results[searchTerm];
   }
 
   fetchSearchTopStories(searchTerm, page=0, hitsPerPage=DEFAULT_HPP) {
@@ -94,12 +87,16 @@ class App extends Component {
 
   onSearchSubmit(event) {
     const { searchTerm } = this.state
-    this.fetchSearchTopStories(searchTerm);
+    this.setState({ searchKey: searchTerm });
+    if (this.needsToSearchTopStories(searchTerm)) {
+      this.fetchSearchTopStories(searchTerm);
+    }
     event.preventDefault();
   }
 
   componentDidMount() {
     const { searchTerm } = this.state;
+    this.setState({ searchKey: searchTerm });
     
     this.fetchSearchTopStories(searchTerm);
   }
@@ -108,18 +105,25 @@ class App extends Component {
     // get the hits and page from the result
     const { hits, page } = result;
 
+    const { searchKey, results } = this.state;
+
     // check if there are already old hits. When the page is 0, it is a new search => The hits are empty
     // when you click the “More” button to fetch paginated data the page isn’t 0. It is the next page. 
-    // The old hits are already stored in your state and thus can be used
-    const oldHits = (page !== 0) ? this.state.result.hits : [];
+    // The old hits are already stored in your state and thus can be used    
+    const oldHits = results && results[searchKey] ? results[searchKey].hits : [];
 
     // you don’t want to override the old hits. You can merge old and new hits from the recent API request
     const updatedHits = [...oldHits, ...hits];
 
     // set the merged hits and page in the local component state
+    // searchKey will be used as the key to save the updated hits and page in a results map
     this.setState({
-      result: { hits: updatedHits, page }
+      results: {
+        ...results,
+        [searchKey]: { hits: updatedHits, page }
+      }
     });
+
   }
 
   onSearchChange(event) {
@@ -127,16 +131,26 @@ class App extends Component {
   }
 
   onDismiss(id) {
-    console.log("Removing item id = " + id)
-    const updatedHits = this.state.result.hits.filter(item => item.objectID !== id);
+    const { searchKey, results } = this.state;
+    const { hits, page } = results[searchKey];
+
+    const isNotId = item => item.objectID !== id;
+    
+    const updatedHits = hits.filter(isNotId);
     this.setState({
-      result: { ...this.state.result, hits: updatedHits }
-    })
+      results: { 
+        ...results, 
+        [searchKey]: { hits: updatedHits, page }
+      }
+    });
   }
 
   render() {
-    const { searchTerm, result } = this.state;
-    const page = (result && result.page) || 0;
+    const { searchTerm, results, searchKey } = this.state;
+    const page = (results && results[searchKey] && results[searchKey].page) || 0;
+    const list = (
+      results && results[searchKey] && results[searchKey].hits
+    ) || [];
 
     return (
       <div className="App">
@@ -147,13 +161,12 @@ class App extends Component {
               </Search>
             </div>
             { 
-              result &&
-              <MyTable list={result.hits}
-                pattern={searchTerm}
+              results &&
+              <MyTable list={list}
                 onDismiss={this.onDismiss} />
             }
             <div className="interactions">
-              <button onClick={() => this.fetchSearchTopStories(searchTerm, page + 1)}>More</button>
+              <button onClick={() => this.fetchSearchTopStories(searchKey, page + 1)}>More</button>
             </div>
       </div>
     );
