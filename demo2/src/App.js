@@ -1,8 +1,8 @@
 import React, { Component } from 'react';
 import './App.css';
 
-import Search from './Search'
-import MyTable from './MyTable'
+// import Search from './Search'
+// import MyTable from './MyTable'
 
 const DEFAULT_QUERY = 'redux';
 const PATH_BASE = 'https://hn.algolia.com/api/v1';
@@ -22,9 +22,49 @@ console.log(url)
 // const userNames = { firstname: 'Robin', lastname: 'Wieruch' }; const age = 28;
 // const user = { ...userNames, age };
 // console.log(user);
-const userNames = { firstname: 'Robin', lastname: 'Wieruch' }; const userAge = { age: 28 };
-const user = { ...userNames, ...userAge };
-console.log(user);
+// const userNames = { firstname: 'Robin', lastname: 'Wieruch' }; const userAge = { age: 28 };
+// const user = { ...userNames, ...userAge };
+// console.log(user);
+
+const Search = ({
+  value,
+  onChange,
+  onSubmit,
+  children
+}) =>
+  <form onSubmit={onSubmit}>
+    <input
+      type="text"
+      value={value}
+      onChange={onChange}
+    />
+    <button type="submit">
+      {children}
+    </button>
+</form>
+
+const MyTable = ({ list, onDismiss }) =>
+  <div className="table">
+    {
+      list.map(item => 
+                <div key={item.objectID}>
+                    <li>
+                    <a href={item.url}>{item.title}</a>
+                    </li>
+                    <li>{item.author}</li>
+                    <li>{item.num_comments}</li>
+                    <li>{item.points}</li>
+
+                    <span>
+                        <button type="button" 
+                            onClick={() => onDismiss(item.objectID)}>
+                            Dismiss
+                        </button>
+                    </span>
+                </div>
+                )
+    }
+</div>
 
 class App extends Component {
   constructor(props) {
@@ -49,25 +89,24 @@ class App extends Component {
       .catch(error => console.log(error));
   }
 
-  onSearchSubmit() {
+  onSearchSubmit(event) {
     const { searchTerm } = this.state
+    this.fetchSearchTopStories(searchTerm);
+    event.preventDefault();
   }
 
   componentDidMount() {
     const { searchTerm } = this.state;
     
-    fetch(`${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}`)
-      .then(response => response.json())
-      .then(result => this.setSearchTopStories(result))
-      .catch(error => console.log(error));
+    this.fetchSearchTopStories(searchTerm);
   }
 
   setSearchTopStories(result) {
     this.setState({result});
   }
 
-  onSearchChange() {
-
+  onSearchChange(event) {
+    this.setState({ searchTerm: event.target.value });
   }
 
   onDismiss(id) {
@@ -81,11 +120,14 @@ class App extends Component {
   render() {
     const { searchTerm, result } = this.state;
 
-    // if (!result) { return null; }
     return (
       <div className="App">
-            <Search value={searchTerm}
-              onChange={this.onSearchChange}/>
+            <div className="interactions">
+              <Search
+              value={searchTerm} onChange={this.onSearchChange} onSubmit={this.onSearchSubmit}> 
+              Search
+              </Search>
+            </div>
             { 
               result &&
               <MyTable list={result.hits}
